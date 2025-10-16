@@ -1,4 +1,4 @@
-import pytest
+import redfush_pytest
 import requests
 import json
 import time
@@ -12,7 +12,7 @@ BASE_URL = "https://127.0.0.1:2443"
 USERNAME = "root"
 PASSWORD = "0penBmc"
 
-@pytest.fixture(scope="session")
+@redfush_pytest.fixture(scope="session")
 def redfish_session():
     """Создаёт сессию Redfish и возвращает объект requests.Session с токеном."""
     session_url = f"{BASE_URL}/redfish/v1/SessionService/Sessions"
@@ -154,7 +154,7 @@ def test_thermal_sensors(redfish_session):
     """Тест: проверка наличия термальных датчиков и нормы температуры CPU (по Redfish spec)."""
     chassis_id = get_chassis_id(redfish_session)
     if not chassis_id:
-        pytest.skip("No chassis found in /redfish/v1/Chassis")
+        redfush_pytest.skip("No chassis found in /redfish/v1/Chassis")
 
     # Пробуем Thermal endpoint
     thermal_url = f"{BASE_URL}/redfish/v1/Chassis/{chassis_id}/Thermal"
@@ -164,7 +164,7 @@ def test_thermal_sensors(redfish_session):
         sensors_url = f"{BASE_URL}/redfish/v1/Chassis/{chassis_id}/Sensors"
         resp = redfish_session.get(sensors_url)
         if resp.status_code != 200:
-            pytest.skip(f"Thermal/Sensors endpoint unavailable: {resp.status_code}")
+            redfush_pytest.skip(f"Thermal/Sensors endpoint unavailable: {resp.status_code}")
 
     data = resp.json()
     temperatures = []
@@ -181,7 +181,7 @@ def test_thermal_sensors(redfish_session):
                         temperatures.append(sensor_data)
 
     if not temperatures:
-        pytest.skip("No temperature sensors found in this BMC image (expected in QEMU Romulus)")
+        redfush_pytest.skip("No temperature sensors found in this BMC image (expected in QEMU Romulus)")
 
     print(f"\n[INFO] Found {len(temperatures)} temperature sensors")
     cpu_temps = [s for s in temperatures if "CPU" in s.get("Name", "").upper()]
@@ -231,7 +231,7 @@ def test_compare_redfish_and_ipmi_cpu_temp(redfish_session):
     """Тест: сравнение температуры CPU через Redfish и IPMI (допуск ±5°C)."""
     chassis_id = get_chassis_id(redfish_session)
     if not chassis_id:
-        pytest.skip("No chassis found")
+        redfush_pytest.skip("No chassis found")
 
     thermal_url = f"{BASE_URL}/redfish/v1/Chassis/{chassis_id}/Thermal"
     resp = redfish_session.get(thermal_url)
@@ -239,7 +239,7 @@ def test_compare_redfish_and_ipmi_cpu_temp(redfish_session):
         sensors_url = f"{BASE_URL}/redfish/v1/Chassis/{chassis_id}/Sensors"
         resp = redfish_session.get(sensors_url)
         if resp.status_code != 200:
-            pytest.skip(f"Sensors unavailable: {resp.status_code} (expected in QEMU)")
+            redfush_pytest.skip(f"Sensors unavailable: {resp.status_code} (expected in QEMU)")
 
     data = resp.json()
     redfish_cpu_temp = None
@@ -262,7 +262,7 @@ def test_compare_redfish_and_ipmi_cpu_temp(redfish_session):
     ipmi_cpu_temp = get_ipmi_cpu_temp()
 
     if redfish_cpu_temp is None or ipmi_cpu_temp is None:
-        pytest.skip("CPU sensors not available in Redfish or IPMI for this emulation (QEMU Romulus limitation)")
+        redfush_pytest.skip("CPU sensors not available in Redfish or IPMI for this emulation (QEMU Romulus limitation)")
 
     diff = abs(redfish_cpu_temp - ipmi_cpu_temp)
     assert diff <= 5, f"Temps differ too much: Redfish={redfish_cpu_temp}°C, IPMI={ipmi_cpu_temp}°C (diff={diff}°C)"
